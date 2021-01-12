@@ -1,0 +1,13 @@
+{
+  "name": "progressive-images-nextjs-mono",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Kyle Pfromer",
+  "license": "MIT",
+  "private": true,
+  "scripts": {},
+  "dependencies": {},
+  "devDependencies": {
+    "lerna": "^3.22.1"
+  }
+}
