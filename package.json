@@ -5,7 +5,10 @@
   "author": "Kyle Pfromer",
   "license": "MIT",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "setup": "lerna bootstrap && lerna link",
+    "postinstall": "yarn setup"
+  },
   "dependencies": {},
   "devDependencies": {
     "lerna": "^3.22.1"
