@@ -161,7 +161,7 @@ const buildRawSrcAttribute = (
     properties.push(
       types.objectProperty(
         types.stringLiteral('placeholder'),
-        buildRequireStatement(types, clone(requireArgs), { width: '100', trace: '' }),
+        buildRequireStatement(types, clone(requireArgs), { width: '20', trace: '' }),
       ),
     );
   }
