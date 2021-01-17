@@ -1,22 +1,29 @@
-import React, { ReactElement, DetailedHTMLProps, ImgHTMLAttributes, CSSProperties } from 'react';
+import React, { ReactElement, DetailedHTMLProps, ImgHTMLAttributes, CSSProperties, useState, useEffect } from 'react';
 import { ImgSrc } from './types';
 
-export interface ImgProps
-  extends Omit<Omit<DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>, 'sizes'>, 'src'> {
+export interface BaseImgProps
+  extends Omit<
+    Omit<DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>, 'sizes' | 'placeholder'>,
+    'src'
+  > {
   src: ImgSrc;
   type?: string;
   webp?: boolean;
   inline?: boolean;
+  placeholder?: boolean;
   url?: boolean;
   original?: boolean;
   sizes?: number[];
   densities?: number[];
   breakpoints?: number[];
+  width?: number;
+  height?: number;
 }
 interface ImgInnerProps {
   rawSrc: {
     fallback: Record<number | string, Record<number, ImgSrc>>;
     webp?: Record<number | string, Record<number, ImgSrc>>;
+    placeholder?: ImgSrc;
   };
 }
 
@@ -87,6 +94,27 @@ const findFallbackImage = (src: ImgSrc, rawSrc: ImgInnerProps['rawSrc']): ImgSrc
 
   return fallbackImage;
 };
+export interface CustomImgProps extends ImgHTMLAttributes<HTMLImageElement> {}
+
+const CustomImg: React.FC<CustomImgProps> = (props) => {
+  return (
+    <img
+      {...props}
+      style={{
+        position: `absolute`,
+        top: 0,
+        left: 0,
+        width: `100%`,
+        height: `100%`,
+        objectFit: `cover`,
+        objectPosition: `center`,
+        ...props?.style,
+      }}
+    />
+  );
+};
+
+const wait = (time: number) => new Promise((resolve) => setTimeout(resolve, time));
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const Img = ({
@@ -99,11 +127,24 @@ const Img = ({
   sizes,
   densities,
   breakpoints,
+  placeholder,
+  height: wantedHeight,
+  width: wantedWidth,
   style,
   ...props
-}: ImgProps): ReactElement | null => {
+}: BaseImgProps): ReactElement | null => {
   const styles: CSSProperties = { ...(style || {}) };
   const { rawSrc, ...imgProps } = props as ImgInnerProps;
+
+  const [ready, setReady] = useState(false);
+
+  // const [ready, setReady] = useState(false);
+
+  // useEffect(() => {
+  //   const buffer = new Image();
+  //   buffer.src = src;
+  //   buffer.onload = () => wait(2000).then(() => setReady(true));
+  // }, [src]);
 
   if (!rawSrc) {
     throw new Error(
@@ -114,30 +155,93 @@ const Img = ({
   // find fallback image
   const fallbackImage = findFallbackImage(src, rawSrc);
 
+  const width = wantedWidth ?? fallbackImage.width;
+  const height = wantedHeight ?? fallbackImage.height;
+  const aspectRatio = width / height;
+
+  // const ready = false;
+
+  const shouldFadeIn = true;
+  const shouldReveal = ready;
+
+  const durationFadeIn = 1000;
+
+  const imageStyle = {
+    opacity: shouldReveal ? 1 : 0,
+    transition: shouldFadeIn ? `opacity ${durationFadeIn}ms` : `none`,
+    // ...imgStyle
+  };
+
+  const delayHideStyle = { transitionDelay: `${durationFadeIn}ms` };
+
+  const imagePlaceholderStyle = {
+    opacity: ready ? 0 : 1,
+    ...(shouldFadeIn && delayHideStyle),
+  };
+
   // return normal image tag if only 1 version is needed
   if (
     !rawSrc.webp &&
     Object.keys(rawSrc.fallback).length === 1 &&
     Object.keys(rawSrc.fallback[(Object.keys(rawSrc.fallback)[0] as unknown) as number]).length === 1
   ) {
-    return <img src={fallbackImage.toString()} {...imgProps} style={styles} />;
+    return (
+      <div
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'inline-block',
+          width,
+          height,
+        }}
+      >
+        {/* Preserve the aspect ratio. */}
+        <div aria-hidden style={{ width: '100%', paddingBottom: `${100 / aspectRatio}%` }} />
+
+        {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} style={imagePlaceholderStyle} />}
+
+        <CustomImg
+          src={fallbackImage.toString()}
+          loading="lazy"
+          onLoad={() => {
+            setReady(true);
+          }}
+          {...imgProps}
+          style={{ ...imageStyle, ...styles }}
+        />
+      </div>
+    );
   }
 
+  // TODO: match above changes
   return (
-    <picture>
-      {rawSrc.webp &&
-        buildSources(
-          rawSrc.webp,
-          sizes || ((Object.keys(rawSrc.webp) as unknown) as (number | string)[]),
+    <div
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'inline-block',
+        width,
+        height,
+      }}
+    >
+      <picture>
+        {rawSrc.webp &&
+          buildSources(
+            rawSrc.webp,
+            sizes || ((Object.keys(rawSrc.webp) as unknown) as (number | string)[]),
+            breakpoints || sizes,
+          )}
+        {buildSources(
+          rawSrc.fallback,
+          sizes || ((Object.keys(rawSrc.fallback) as unknown) as (number | string)[]),
           breakpoints || sizes,
         )}
-      {buildSources(
-        rawSrc.fallback,
-        sizes || ((Object.keys(rawSrc.fallback) as unknown) as (number | string)[]),
-        breakpoints || sizes,
-      )}
-      <img src={fallbackImage.toString()} {...imgProps} style={styles} />
-    </picture>
+
+        {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} />}
+
+        <CustomImg src={fallbackImage.toString()} {...imgProps} style={styles} />
+      </picture>
+    </div>
   );
 };
 

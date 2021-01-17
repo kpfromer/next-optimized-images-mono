@@ -29,7 +29,7 @@ const buildConfig = (types: Babel['types'], path: NodePath<JSXElement>): ImageCo
   }
 
   // check boolean attributes: webp, inline, url, original
-  ['webp', 'inline', 'url', 'original'].forEach((attr) => {
+  ['webp', 'inline', 'url', 'original', 'placeholder'].forEach((attr) => {
     const value = getBooleanAttribute(path, attr);
 
     if (typeof value !== 'undefined') {
@@ -155,6 +155,16 @@ const buildRawSrcAttribute = (
 
     properties.push(types.objectProperty(types.identifier(type), types.objectExpression(typeProperties)));
   });
+
+  // rawSrc = {...rawSrc, placeholder: require(`imagepath?width=100&trace`)}
+  if (config.placeholder) {
+    properties.push(
+      types.objectProperty(
+        types.stringLiteral('placeholder'),
+        buildRequireStatement(types, clone(requireArgs), { width: '100', trace: '' }),
+      ),
+    );
+  }
 
   return types.jsxAttribute(
     types.jsxIdentifier('rawSrc'),

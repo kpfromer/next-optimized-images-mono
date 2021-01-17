@@ -16,6 +16,7 @@ interface PluginOptions {
 }
 
 export default function ({ types }: Babel): { visitor: Visitor<PluginOptions>; inherits: unknown } {
+  console.log('run');
   return {
     inherits: babelPluginSyntaxJsx,
     visitor: {
