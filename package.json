@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "setup": "lerna bootstrap",
+    "setup": "lerna bootstrap ",
     "postinstall": "yarn setup"
   },
   "dependencies": {},
