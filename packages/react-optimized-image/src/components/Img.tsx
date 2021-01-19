@@ -18,7 +18,7 @@ export interface BaseImgProps
   type?: string;
   webp?: boolean;
   inline?: boolean;
-  placeholder?: boolean;
+  placeholder?: boolean | 'trace' | 'lqip';
   url?: boolean;
   original?: boolean;
   sizes?: number[];
@@ -154,8 +154,6 @@ function getIO(): undefined | IntersectionObserver {
   return io;
 }
 
-function withIntersectionObserver() {}
-
 /**
  * Listens for element intersections.
  * @param el The elemen to listen for intersections.
@@ -222,7 +220,6 @@ const Img = ({
   useEffect(() => {
     if (useIOSupport && elementRef.current) {
       const removeListener = listenToIntersections(elementRef.current, () => {
-        console.log('in view');
         setIsVisible(true);
         setImgLoaded(true);
       });
@@ -261,46 +258,6 @@ const Img = ({
     ...(shouldFadeIn && delayHideStyle),
   };
 
-  // return normal image tag if only 1 version is needed
-  if (
-    !rawSrc.webp &&
-    Object.keys(rawSrc.fallback).length === 1 &&
-    Object.keys(rawSrc.fallback[(Object.keys(rawSrc.fallback)[0] as unknown) as number]).length === 1
-  ) {
-    return (
-      <div
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'inline-block',
-          width,
-          height,
-        }}
-        ref={elementRef}
-        // Supress hydration warning since it will not be render on ssr
-        suppressHydrationWarning={true}
-      >
-        {/* Preserve the aspect ratio. */}
-        <div aria-hidden style={{ width: '100%', paddingBottom: `${100 / aspectRatio}%` }} />
-
-        {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} style={imagePlaceholderStyle} />}
-
-        {isVisible && (
-          <CustomImg
-            src={fallbackImage.toString()}
-            loading="lazy"
-            onLoad={() => {
-              setImgLoaded(true);
-            }}
-            {...imgProps}
-            style={{ ...imageStyle, ...styles }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // TODO: match above changes
   return (
     <div
       style={{

@@ -264,9 +264,9 @@ const resolveObjectProperty = (path: NodePath<ObjectExpression>, property: Objec
   let bindings: string[] = [];
   const parent = path.findParent(() => true);
 
-  if (parent.node.type === 'ObjectProperty') {
+  if (parent?.node.type === 'ObjectProperty') {
     bindings = [...resolveObjectProperty(parent.findParent(() => true) as NodePath<ObjectExpression>, parent.node)];
-  } else if (parent.node.type === 'VariableDeclarator' && parent.node.id.type === 'Identifier') {
+  } else if (parent?.node.type === 'VariableDeclarator' && parent.node.id.type === 'Identifier') {
     bindings.push(parent.node.id.name);
   }
 
@@ -320,7 +320,7 @@ const resolveObject = (types: Babel['types'], path: NodePath<JSXElement>, bindin
   let initializer;
 
   // search for object declaration
-  program.traverse({
+  program?.traverse({
     // styles.StyledImg = ...
     MemberExpression(exPath: NodePath<MemberExpression>) {
       if (exPath.node.property && exPath.node.property.name === variableName) {

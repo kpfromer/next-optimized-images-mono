@@ -43,7 +43,7 @@ export const getBooleanAttribute = (path: NodePath<JSXElement>, attributeName: s
     }
 
     if (
-      attribute.node.value.type === 'JSXExpressionContainer' &&
+      attribute.node.value?.type === 'JSXExpressionContainer' &&
       attribute.node.value.expression.type === 'BooleanLiteral'
     ) {
       return attribute.node.value.expression.value;
@@ -51,6 +51,46 @@ export const getBooleanAttribute = (path: NodePath<JSXElement>, attributeName: s
 
     // todo: better error message with link to docs when ready & create test for this error
     throw attribute.get('value').buildCodeFrameError('Only static boolean values are allowed');
+  }
+
+  return undefined;
+};
+
+/**
+ * Gets the value of a boolean or string JSX attribute
+ *
+ * @param {NodePath<JSXElement>} path
+ * @param {string} attributeName
+ * @returns {boolean | undefined}
+ */
+export const getBooleanOrStringAttribute = (
+  path: NodePath<JSXElement>,
+  attributeName: string,
+): boolean | string | undefined => {
+  const attribute = getAttribute(path, attributeName);
+
+  if (attribute) {
+    // <Img placeholder>...
+    if (attribute.node.value === null) {
+      return true;
+    }
+
+    if (
+      // <Img placeholder={true}> or <Img placeholder={"trace"}>
+      attribute.node.value?.type === 'JSXExpressionContainer' &&
+      (attribute.node.value.expression.type === 'BooleanLiteral' ||
+        attribute.node.value.expression.type === 'StringLiteral')
+    ) {
+      return attribute.node.value.expression.value;
+    } else if (
+      // <Img placeholder="trace">
+      attribute.node.value?.type === 'StringLiteral'
+    ) {
+      return attribute.node.value.value;
+    }
+
+    // todo: better error message with link to docs when ready & create test for this error
+    throw attribute.get('value').buildCodeFrameError('Only static boolean values or static strings are allowed');
   }
 
   return undefined;
@@ -106,9 +146,11 @@ export const getNumberedArrayAttribute = (path: NodePath<JSXElement>, attributeN
           values.push(element.value);
         } else if (element) {
           // todo: better error message with link to docs when ready & create test for this error
-          throw (((attribute.get('value') as NodePath<JSXExpressionContainer>).get('expression') as NodePath<
-            ArrayExpression
-          >).get(`elements.${i}`) as NodePath).buildCodeFrameError('Only static number values are allowed');
+          throw (((attribute.get('value') as NodePath<JSXExpressionContainer>).get(
+            'expression',
+          ) as NodePath<ArrayExpression>).get(`elements.${i}`) as NodePath).buildCodeFrameError(
+            'Only static number values are allowed',
+          );
         }
       });
 
