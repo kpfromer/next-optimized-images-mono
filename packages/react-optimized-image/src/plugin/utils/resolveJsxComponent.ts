@@ -160,7 +160,8 @@ const resolveImport = (binding: Binding | undefined): { exportName?: string; mod
  * @returns {{ exportName?: string; moduleName?: string } | undefined}
  */
 const resolveLocalImportBinding = (binding: Binding, moduleName: string, exportName: string): Binding | undefined => {
-  if (binding.path.hub.file.opts.filename) {
+  // TODO: better data
+  if ((binding.path.hub as any).file.opts.filename) {
     // resolve and parse file
     const filePath = resolveFilePathSync(binding.path, moduleName);
 
@@ -168,7 +169,8 @@ const resolveLocalImportBinding = (binding: Binding, moduleName: string, exportN
       return undefined;
     }
 
-    const parsedFile = loadFileSync(filePath, binding.path.hub.file.opts.parserOpts);
+    // TODO: better data
+    const parsedFile = loadFileSync(filePath, (binding.path.hub as any).file.opts.parserOpts);
     const exploded = explodeModule(parsedFile.path.parent);
     const exportStatement = exploded.exports.find((e: { external: string }) => e.external === exportName);
 
@@ -248,7 +250,8 @@ const resolveMemberExpression = (node: MemberExpression): string[] => {
     bindings.push(node.object.name);
   }
 
-  bindings.push(node.property.name);
+  // TODO: better data
+  bindings.push((node.property as any).name);
 
   return bindings;
 };
@@ -270,7 +273,8 @@ const resolveObjectProperty = (path: NodePath<ObjectExpression>, property: Objec
     bindings.push(parent.node.id.name);
   }
 
-  bindings.push(property.key.name);
+  // TODO: better data
+  bindings.push((property.key as any).name);
 
   return bindings;
 };
@@ -323,7 +327,8 @@ const resolveObject = (types: Babel['types'], path: NodePath<JSXElement>, bindin
   program?.traverse({
     // styles.StyledImg = ...
     MemberExpression(exPath: NodePath<MemberExpression>) {
-      if (exPath.node.property && exPath.node.property.name === variableName) {
+      // TODO: better data
+      if (exPath.node.property && (exPath.node.property as any).name === variableName) {
         const exBindings = resolveMemberExpression(exPath.node);
 
         if (arraysMatch(bindings, exBindings) && exPath.parent.type === 'AssignmentExpression') {

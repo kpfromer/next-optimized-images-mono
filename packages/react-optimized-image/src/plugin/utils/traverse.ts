@@ -47,7 +47,8 @@ export const getExportName = (node: ImportSpecifier | ImportDefaultSpecifier): s
     return 'default';
   }
 
-  return node.imported.name;
+  // TODO: better typing
+  return (node.imported as any).name;
 };
 
 /**
@@ -131,12 +132,13 @@ export const getRelevantRequireString = (types: Babel['types'], path: NodePath<J
 export const resolveRequireExportName = (node: VariableDeclarator, binding: Binding): string | undefined => {
   // check for const { Svg } = require('react-optimized-image') calls
   if (node.id.type === 'ObjectPattern') {
-    return (node.id.properties.find(
+    // TODO: better typing
+    return ((node.id.properties.find(
       (property) =>
         property.type === 'ObjectProperty' &&
         property.value.type === 'Identifier' &&
         property.value.name === binding.identifier.name,
-    ) as ObjectProperty).key.name;
+    ) as ObjectProperty).key as any).name;
   }
 
   // check for require('react-optimized-image').default calls
