@@ -72,5 +72,17 @@
   },
   "bugs": {
     "url": "https://github.com/cyrilwanner/optimized-images-loader/issues"
+  },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/changelog",
+      "@semantic-release/git"
+    ],
+    "branches": [
+      "main"
+    ]
   }
 }
