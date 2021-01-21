@@ -1,5 +1,5 @@
 {
-  "name": "optimized-images-loader",
+  "name": "kpfromer-optimized-images-loader",
   "version": "0.4.0",
   "description": "Automatically optimize images in webpack projects.",
   "keywords": [
@@ -18,7 +18,7 @@
     "build:types": "tsc --emitDeclarationOnly",
     "lint": "tsc --noEmit && eslint . --ext .ts --ext .js",
     "lint:fix": "npm run lint -- --fix",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "test:watch": "npm test -- --watch"
   },
   "dependencies": {

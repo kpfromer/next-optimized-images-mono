@@ -5,14 +5,14 @@ export default () => (
   <div>
     <Img
       src={Image}
-      placeholder
+      placeholder="lqip"
       rawSrc={{
         fallback: {
           original: {
             1: require('./image.png'),
           },
         },
-        placeholder: require('./image.png?width=100&trace'),
+        placeholder: require('./image.png?lqip'),
       }}
     />
   </div>

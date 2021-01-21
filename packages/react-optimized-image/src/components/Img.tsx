@@ -1,4 +1,12 @@
-import React, { ReactElement, DetailedHTMLProps, ImgHTMLAttributes, CSSProperties, useState, useEffect } from 'react';
+import React, {
+  ReactElement,
+  DetailedHTMLProps,
+  ImgHTMLAttributes,
+  CSSProperties,
+  useState,
+  useEffect,
+  useRef,
+} from 'react';
 import { ImgSrc } from './types';
 
 export interface BaseImgProps
@@ -10,7 +18,7 @@ export interface BaseImgProps
   type?: string;
   webp?: boolean;
   inline?: boolean;
-  placeholder?: boolean;
+  placeholder?: boolean | 'trace' | 'lqip';
   url?: boolean;
   original?: boolean;
   sizes?: number[];
@@ -18,6 +26,11 @@ export interface BaseImgProps
   breakpoints?: number[];
   width?: number;
   height?: number;
+
+  loading?: 'lazy' | 'eager'; // 'auto'
+
+  fadeIn?: boolean;
+  durationFadeIn?: number;
 }
 interface ImgInnerProps {
   rawSrc: {
@@ -114,7 +127,57 @@ const CustomImg: React.FC<CustomImgProps> = (props) => {
   );
 };
 
-const wait = (time: number) => new Promise((resolve) => setTimeout(resolve, time));
+let io: undefined | IntersectionObserver;
+const ioListeners = new WeakMap();
+
+function getIO(): undefined | IntersectionObserver {
+  // Checks that we are in a browser that supports IntersectionObserver
+  if (typeof io === `undefined` && typeof window !== `undefined` && window.IntersectionObserver) {
+    io = new window.IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (ioListeners.has(entry.target)) {
+            const cb = ioListeners.get(entry.target);
+            // Edge doesn't currently support isIntersecting, so also test for an intersectionRatio > 0
+            if (entry.isIntersecting || entry.intersectionRatio > 0) {
+              io?.unobserve(entry.target);
+              ioListeners.delete(entry.target);
+              cb();
+            }
+          }
+        });
+      },
+      { rootMargin: `200px` },
+    );
+  }
+
+  return io;
+}
+
+/**
+ * Listens for element intersections.
+ * @param el The elemen to listen for intersections.
+ * @param cb The function called when an intersection occurs.
+ * @returns A function to remove listener for `el` (cleanup function)
+ */
+const listenToIntersections = (el: HTMLElement, cb: () => void) => {
+  const observer = getIO();
+
+  if (observer) {
+    observer.observe(el);
+    ioListeners.set(el, cb);
+  }
+
+  return () => {
+    observer?.unobserve(el);
+    ioListeners.delete(el);
+  };
+};
+
+// Native lazy-loading support: https://addyosmani.com/blog/lazy-loading/
+const hasNativeLazyLoadSupport = typeof HTMLImageElement !== `undefined` && `loading` in HTMLImageElement.prototype;
+const isBrowser = typeof window !== `undefined`;
+const hasIOSupport = isBrowser && window.IntersectionObserver;
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const Img = ({
@@ -130,21 +193,39 @@ const Img = ({
   placeholder,
   height: wantedHeight,
   width: wantedWidth,
+  fadeIn = true,
+  durationFadeIn = 500,
+  // Better to default to lazy and let users opt out
+  loading = 'lazy',
   style,
   ...props
 }: BaseImgProps): ReactElement | null => {
   const styles: CSSProperties = { ...(style || {}) };
   const { rawSrc, ...imgProps } = props as ImgInnerProps;
 
-  const [ready, setReady] = useState(false);
+  // If this image has already been loaded before then we can assume it's
+  // already in the browser cache so it's cheap to just show directly.
+  const seenBefore = false; // isBrowser && inImageCache(props);
 
-  // const [ready, setReady] = useState(false);
+  const isCritical = loading === `eager`;
 
-  // useEffect(() => {
-  //   const buffer = new Image();
-  //   buffer.src = src;
-  //   buffer.onload = () => wait(2000).then(() => setReady(true));
-  // }, [src]);
+  const addNoScript = !(isCritical && !fadeIn);
+  const useIOSupport = !hasNativeLazyLoadSupport && hasIOSupport && !isCritical && !seenBefore;
+
+  const [isVisible, setIsVisible] = useState(isCritical || (isBrowser && (hasNativeLazyLoadSupport || !useIOSupport)));
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const elementRef = useRef<HTMLDivElement>(null);
+
+  // Listen to element intersection
+  useEffect(() => {
+    if (useIOSupport && elementRef.current) {
+      const removeListener = listenToIntersections(elementRef.current, () => {
+        setIsVisible(true);
+        setImgLoaded(true);
+      });
+      return removeListener;
+    }
+  }, [elementRef]);
 
   if (!rawSrc) {
     throw new Error(
@@ -161,10 +242,8 @@ const Img = ({
 
   // const ready = false;
 
-  const shouldFadeIn = true;
-  const shouldReveal = ready;
-
-  const durationFadeIn = 1000;
+  const shouldReveal = !fadeIn || imgLoaded;
+  const shouldFadeIn = fadeIn; //&& imgLoaded;
 
   const imageStyle = {
     opacity: shouldReveal ? 1 : 0,
@@ -175,45 +254,10 @@ const Img = ({
   const delayHideStyle = { transitionDelay: `${durationFadeIn}ms` };
 
   const imagePlaceholderStyle = {
-    opacity: ready ? 0 : 1,
+    opacity: imgLoaded ? 0 : 1,
     ...(shouldFadeIn && delayHideStyle),
   };
 
-  // return normal image tag if only 1 version is needed
-  if (
-    !rawSrc.webp &&
-    Object.keys(rawSrc.fallback).length === 1 &&
-    Object.keys(rawSrc.fallback[(Object.keys(rawSrc.fallback)[0] as unknown) as number]).length === 1
-  ) {
-    return (
-      <div
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'inline-block',
-          width,
-          height,
-        }}
-      >
-        {/* Preserve the aspect ratio. */}
-        <div aria-hidden style={{ width: '100%', paddingBottom: `${100 / aspectRatio}%` }} />
-
-        {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} style={imagePlaceholderStyle} />}
-
-        <CustomImg
-          src={fallbackImage.toString()}
-          loading="lazy"
-          onLoad={() => {
-            setReady(true);
-          }}
-          {...imgProps}
-          style={{ ...imageStyle, ...styles }}
-        />
-      </div>
-    );
-  }
-
-  // TODO: match above changes
   return (
     <div
       style={{
@@ -223,24 +267,40 @@ const Img = ({
         width,
         height,
       }}
+      ref={elementRef}
+      // Supress hydration warning since it will not be render on ssr
+      suppressHydrationWarning={true}
     >
-      <picture>
-        {rawSrc.webp &&
-          buildSources(
-            rawSrc.webp,
-            sizes || ((Object.keys(rawSrc.webp) as unknown) as (number | string)[]),
+      {/* Preserve the aspect ratio. */}
+      <div aria-hidden style={{ width: '100%', paddingBottom: `${100 / aspectRatio}%` }} />
+
+      {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} style={imagePlaceholderStyle} />}
+
+      {isVisible && (
+        <picture>
+          {rawSrc.webp &&
+            buildSources(
+              rawSrc.webp,
+              sizes || ((Object.keys(rawSrc.webp) as unknown) as (number | string)[]),
+              breakpoints || sizes,
+            )}
+          {buildSources(
+            rawSrc.fallback,
+            sizes || ((Object.keys(rawSrc.fallback) as unknown) as (number | string)[]),
             breakpoints || sizes,
           )}
-        {buildSources(
-          rawSrc.fallback,
-          sizes || ((Object.keys(rawSrc.fallback) as unknown) as (number | string)[]),
-          breakpoints || sizes,
-        )}
 
-        {rawSrc.placeholder && <CustomImg src={rawSrc.placeholder.src} />}
-
-        <CustomImg src={fallbackImage.toString()} {...imgProps} style={styles} />
-      </picture>
+          <CustomImg
+            src={fallbackImage.toString()}
+            loading={loading}
+            onLoad={() => {
+              setImgLoaded(true);
+            }}
+            {...imgProps}
+            style={{ ...imageStyle, ...styles }}
+          />
+        </picture>
+      )}
     </div>
   );
 };
