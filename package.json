@@ -34,6 +34,8 @@
       "@semantic-release/changelog",
       "@semantic-release/git"
     ],
-    "branches": "main"
+    "branches": [
+      "main"
+    ]
   }
 }
