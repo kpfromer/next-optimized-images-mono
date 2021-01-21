@@ -50,7 +50,7 @@ module.exports = {
       test: getHandledFilesRegex(handleImages),
       use: [
         {
-          loader: 'optimized-images-loader',
+          loader: 'kpfromer-optimized-images-loader',
           options: {
             outputPath: 'static/chunks/images/',
             publicPath: nextConfig.assetPrefix

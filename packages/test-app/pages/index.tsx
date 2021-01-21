@@ -1,4 +1,4 @@
-import Img from 'react-optimized-image';
+import Img from 'kpfromer-react-optimized-image';
 import Image from '../images/test.jpg';
 import ImageTwo from '../images/test-2.jpg';
 import ImageThree from '../images/test-3.jpg';
